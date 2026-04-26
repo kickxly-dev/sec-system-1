@@ -47,6 +47,11 @@ const flash       = document.getElementById('flash');
 const hint        = document.getElementById('hint');
 const noCamera    = document.getElementById('no-camera');
 
+// Camera permission screen
+const camScreen   = document.getElementById('cam-screen');
+const allowCamBtn = document.getElementById('allow-cam-btn');
+const camHint     = document.getElementById('cam-hint');
+
 // Modal
 const apiModal     = document.getElementById('api-modal');
 const apiKeyInput  = document.getElementById('api-key-input');
@@ -55,21 +60,66 @@ const toggleVis    = document.getElementById('toggle-visibility');
 
 /* ── Init ──────────────────────────────────────────────────────────────────── */
 async function init() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
   // 1. Resolve API key: config.js > localStorage > modal
   apiKey = (typeof GROQ_API_KEY !== 'undefined' && GROQ_API_KEY.trim())
     ? GROQ_API_KEY.trim()
     : (localStorage.getItem(LS_KEY) || '');
 
   if (!apiKey) {
+    camScreen.classList.add('hidden'); // hide cam screen until key is set
     showApiModal();
     return;
   }
 
-  await startCamera();
+  await requestCameraAccess();
+}
 
-  // Register service worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+/* ── Camera Permission Screen ──────────────────────────────────────────────── */
+async function requestCameraAccess() {
+  // If permission already granted, skip the screen
+  if (navigator.permissions) {
+    try {
+      const perm = await navigator.permissions.query({ name: 'camera' });
+      if (perm.state === 'granted') {
+        camScreen.classList.add('hidden');
+        await startCamera();
+        return;
+      }
+      if (perm.state === 'denied') {
+        showCamDenied();
+        return;
+      }
+    } catch { /* permissions API not supported — fall through to show screen */ }
+  }
+  // Show the prompt screen
+  camScreen.classList.remove('hidden');
+}
+
+allowCamBtn.addEventListener('click', async () => {
+  allowCamBtn.disabled = true;
+  allowCamBtn.textContent = 'Starting…';
+  camHint.textContent = '';
+  camHint.classList.remove('error');
+  try {
+    await startCamera();
+    camScreen.classList.add('hidden');
+  } catch (err) {
+    showCamDenied(err);
+  }
+});
+
+function showCamDenied(err) {
+  allowCamBtn.disabled = false;
+  allowCamBtn.textContent = 'Try Again';
+  camHint.classList.add('error');
+  if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+    camHint.textContent = 'Camera access was denied. Open your browser settings and allow camera for this site, then tap Try Again.';
+  } else {
+    camHint.textContent = 'Could not start camera. Make sure no other app is using it, then tap Try Again.';
   }
 }
 
@@ -89,7 +139,7 @@ saveKeyBtn.addEventListener('click', async () => {
   apiKey = key;
   localStorage.setItem(LS_KEY, key);
   hideApiModal();
-  await startCamera();
+  await requestCameraAccess();
 });
 
 apiKeyInput.addEventListener('keydown', e => {
@@ -120,22 +170,27 @@ async function startCamera() {
     }
   };
 
+  let lastErr;
+  // First try: rear camera at high res
   try {
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
     await video.play();
     captureBtn.classList.add('ready');
+    return;
   } catch (err) {
-    // Try any camera
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      video.srcObject = stream;
-      await video.play();
-      captureBtn.classList.add('ready');
-    } catch {
-      noCamera.classList.add('visible');
-      captureBtn.disabled = true;
-    }
+    lastErr = err;
+    // NotAllowedError = user denied; don't retry, bubble up immediately
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') throw err;
+  }
+  // Second try: any camera
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    await video.play();
+    captureBtn.classList.add('ready');
+  } catch (err) {
+    throw err; // bubble to caller for permission screen to handle
   }
 }
 
