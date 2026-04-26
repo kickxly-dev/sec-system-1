@@ -1,0 +1,504 @@
+/* ── Reset & Base ────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --crimson: #DC143C;
+  --crimson-dim: rgba(220, 20, 60, 0.15);
+  --crimson-glow: rgba(220, 20, 60, 0.4);
+  --bg: #000;
+  --surface: #0d0d0d;
+  --surface-2: #161616;
+  --border: rgba(255,255,255,0.07);
+  --text: #fff;
+  --text-muted: rgba(255,255,255,0.45);
+  --text-dim: rgba(255,255,255,0.7);
+  --radius: 20px;
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* ── Layout ──────────────────────────────────────────── */
+#app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Camera Layer ────────────────────────────────────── */
+#camera-layer {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+
+#video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scaleX(1); /* keep rear camera correct */
+}
+
+/* ── Viewfinder ──────────────────────────────────────── */
+#viewfinder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -58%);
+  width: min(72vw, 300px);
+  height: min(72vw, 300px);
+  pointer-events: none;
+}
+
+/* four corner brackets via pseudo-elements on two spans */
+.vf-tl, .vf-tr, .vf-bl, .vf-br {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: var(--crimson);
+  border-style: solid;
+  border-radius: 2px;
+}
+.vf-tl { top: 0; left: 0;  border-width: 2px 0 0 2px; }
+.vf-tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+.vf-bl { bottom: 0; left: 0;  border-width: 0 0 2px 2px; }
+.vf-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+/* scan-line animation */
+.vf-line {
+  position: absolute;
+  left: 6px; right: 6px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--crimson), transparent);
+  top: 0;
+  animation: scanline 2.4s ease-in-out infinite;
+  opacity: 0.8;
+}
+@keyframes scanline {
+  0%   { top: 6px; opacity: 0; }
+  15%  { opacity: 0.8; }
+  85%  { opacity: 0.8; }
+  100% { top: calc(100% - 6px); opacity: 0; }
+}
+
+/* ── Top Bar ─────────────────────────────────────────── */
+#top-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: env(safe-area-inset-top, 12px) 20px 12px;
+  padding-top: max(env(safe-area-inset-top), 12px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%);
+  z-index: 10;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+.logo span { color: var(--crimson); }
+
+#settings-btn {
+  width: 36px; height: 36px;
+  border: none;
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(8px);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.2s;
+}
+#settings-btn:hover { background: rgba(255,255,255,0.18); }
+#settings-btn svg { width: 16px; height: 16px; }
+
+/* ── Hint text ───────────────────────────────────────── */
+#hint {
+  position: absolute;
+  bottom: 160px;
+  left: 0; right: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+/* ── Capture Button ──────────────────────────────────── */
+#controls {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding-bottom: max(env(safe-area-inset-bottom), 36px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  z-index: 10;
+  background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%);
+}
+
+#capture-btn {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  border: 3px solid var(--crimson);
+  background: transparent;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  transition: transform 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+#capture-btn::after {
+  content: '';
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: var(--crimson);
+  transition: transform 0.15s, opacity 0.15s;
+}
+#capture-btn:active { transform: scale(0.93); }
+#capture-btn:active::after { opacity: 0.8; transform: scale(0.92); }
+#capture-btn.loading::after {
+  background: transparent;
+  border: 3px solid var(--crimson);
+  border-top-color: transparent;
+  animation: spin 0.7s linear infinite;
+}
+#capture-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* flash overlay */
+#flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 50;
+  transition: opacity 0.05s;
+}
+#flash.active { opacity: 0.35; }
+
+/* ── Result Card ─────────────────────────────────────── */
+#result-card {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: var(--surface);
+  border-radius: var(--radius) var(--radius) 0 0;
+  border-top: 1px solid var(--border);
+  padding: 0 0 max(env(safe-area-inset-bottom), 24px);
+  z-index: 40;
+  transform: translateY(110%);
+  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+  max-height: 82dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+#result-card.open { transform: translateY(0); }
+
+.card-handle {
+  width: 36px; height: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  margin: 14px auto 20px;
+}
+
+.card-body { padding: 0 22px; }
+
+/* category pill */
+.category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--crimson-dim);
+  border: 1px solid rgba(220,20,60,0.25);
+  color: var(--crimson);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 100px;
+  margin-bottom: 14px;
+}
+.category-pill svg { width: 11px; height: 11px; }
+
+/* product name */
+.product-name {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.4px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.brand-name {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+}
+
+/* price + rating row */
+.meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+
+.price-block .label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+.price-block .value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--crimson);
+  letter-spacing: -0.3px;
+}
+
+.rating-block { text-align: right; }
+.rating-block .label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+.stars {
+  display: flex;
+  gap: 3px;
+  justify-content: flex-end;
+}
+.star {
+  width: 16px; height: 16px;
+  color: var(--crimson);
+}
+.star.empty { color: rgba(255,255,255,0.15); }
+
+/* description */
+.description {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-dim);
+  margin-bottom: 22px;
+}
+
+/* alternatives */
+.section-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.alternatives {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 26px;
+}
+
+.alt-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.alt-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--crimson);
+  flex-shrink: 0;
+}
+
+/* action buttons */
+.card-actions {
+  display: flex;
+  gap: 10px;
+  padding: 0 22px;
+  margin-top: 4px;
+}
+
+#scan-again-btn {
+  flex: 1;
+  height: 52px;
+  background: var(--crimson);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: opacity 0.15s, transform 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+#scan-again-btn:active { opacity: 0.85; transform: scale(0.98); }
+
+#share-btn {
+  width: 52px; height: 52px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--text-dim);
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+#share-btn:hover { background: rgba(255,255,255,0.08); }
+#share-btn svg { width: 18px; height: 18px; }
+
+/* ── Error State ─────────────────────────────────────── */
+.error-card .product-name { color: var(--text-muted); font-size: 18px; }
+.error-card .category-pill { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); color: var(--text-muted); }
+
+/* ── API Key Modal ───────────────────────────────────── */
+#api-modal {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(12px);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: max(env(safe-area-inset-bottom), 20px);
+  transition: opacity 0.3s;
+}
+#api-modal.hidden { opacity: 0; pointer-events: none; }
+
+.modal-sheet {
+  width: 100%;
+  background: var(--surface);
+  border-radius: var(--radius) var(--radius) 0 0;
+  border-top: 1px solid var(--border);
+  padding: 28px 24px max(env(safe-area-inset-bottom), 28px);
+}
+
+.modal-sheet h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.modal-sheet p {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 22px;
+}
+.modal-sheet p a {
+  color: var(--crimson);
+  text-decoration: none;
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 14px;
+}
+.input-group input {
+  width: 100%;
+  height: 50px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 46px 0 16px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: var(--font);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input-group input::placeholder { color: var(--text-muted); }
+.input-group input:focus { border-color: var(--crimson); }
+
+.input-toggle {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+}
+.input-toggle svg { width: 18px; height: 18px; display: block; }
+
+#save-key-btn {
+  width: 100%;
+  height: 52px;
+  background: var(--crimson);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+#save-key-btn:hover { opacity: 0.9; }
+
+/* ── Pulsing ring on capture btn when ready ──────────── */
+@keyframes ring-pulse {
+  0% { box-shadow: 0 0 0 0 var(--crimson-glow); }
+  70% { box-shadow: 0 0 0 12px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+#capture-btn.ready { animation: ring-pulse 2s ease-out infinite; }
+
+/* ── No-camera message ───────────────────────────────── */
+#no-camera {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 32px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+#no-camera svg { width: 48px; height: 48px; opacity: 0.3; }
+#no-camera.visible { display: flex; }
+
+/* ── Scrollbar ───────────────────────────────────────── */
+#result-card::-webkit-scrollbar { width: 0; }

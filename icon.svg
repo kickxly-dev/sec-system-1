@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#000"/>
+  <!-- Corner brackets -->
+  <path d="M60 60 L60 140 M60 60 L140 60" stroke="#DC143C" stroke-width="24" stroke-linecap="round" fill="none"/>
+  <path d="M452 60 L452 140 M452 60 L372 60" stroke="#DC143C" stroke-width="24" stroke-linecap="round" fill="none"/>
+  <path d="M60 452 L60 372 M60 452 L140 452" stroke="#DC143C" stroke-width="24" stroke-linecap="round" fill="none"/>
+  <path d="M452 452 L452 372 M452 452 L372 452" stroke="#DC143C" stroke-width="24" stroke-linecap="round" fill="none"/>
+  <!-- Center scan line -->
+  <line x1="120" y1="256" x2="392" y2="256" stroke="#DC143C" stroke-width="4" opacity="0.7"/>
+  <!-- IQ text -->
+  <text x="256" y="278" font-family="system-ui, sans-serif" font-size="96" font-weight="700" fill="#fff" text-anchor="middle" dominant-baseline="middle">IQ</text>
+</svg>
