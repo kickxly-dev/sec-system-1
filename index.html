@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#DC143C">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ScanIQ">
+  <meta name="description" content="AI-powered product scanner — identify, price, and compare anything instantly.">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <title>ScanIQ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Camera feed -->
+  <div id="camera-layer">
+    <video id="video" autoplay playsinline muted></video>
+  </div>
+
+  <!-- Flash overlay -->
+  <div id="flash"></div>
+
+  <!-- No-camera fallback -->
+  <div id="no-camera">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M23 7l-7-4-8 4-8-4v13l8 4 8-4 7 4V7z" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="1" y1="1" x2="23" y2="23" stroke-linecap="round"/>
+    </svg>
+    <p>Camera access is required.<br>Please allow camera permissions and reload.</p>
+  </div>
+
+  <!-- Top bar -->
+  <header id="top-bar">
+    <div class="logo">Scan<span>IQ</span></div>
+    <button id="settings-btn" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+    </button>
+  </header>
+
+  <!-- Viewfinder -->
+  <div id="viewfinder">
+    <div class="vf-tl"></div>
+    <div class="vf-tr"></div>
+    <div class="vf-bl"></div>
+    <div class="vf-br"></div>
+    <div class="vf-line"></div>
+  </div>
+
+  <!-- Hint -->
+  <p id="hint">Point camera at any product</p>
+
+  <!-- Capture controls -->
+  <div id="controls">
+    <button id="capture-btn" aria-label="Capture and analyze"></button>
+  </div>
+
+  <!-- ── Result Card ── -->
+  <div id="result-card" role="dialog" aria-label="Analysis result">
+    <div class="card-handle"></div>
+    <div class="card-body" id="card-content">
+      <!-- Injected by JS -->
+    </div>
+    <div class="card-actions">
+      <button id="scan-again-btn">Scan Again</button>
+      <button id="share-btn" aria-label="Share">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── API Key Modal ── -->
+  <div id="api-modal">
+    <div class="modal-sheet">
+      <h2>Enter your Groq API key</h2>
+      <p>
+        ScanIQ uses Groq's vision AI to identify products.<br>
+        Get a free key at <a href="https://console.groq.com" target="_blank" rel="noopener">console.groq.com</a> — stored only in your browser.
+      </p>
+      <div class="input-group">
+        <input type="password" id="api-key-input" placeholder="gsk_…" autocomplete="off" spellcheck="false">
+        <button class="input-toggle" id="toggle-visibility" aria-label="Show/hide key">
+          <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+      <button id="save-key-btn">Start Scanning</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Hidden canvas for frame capture -->
+<canvas id="capture-canvas" style="display:none"></canvas>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
